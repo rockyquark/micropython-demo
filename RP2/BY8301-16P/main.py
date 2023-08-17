@@ -1,9 +1,50 @@
-from machine import UART, Pin
+from machine import UART, Pin, Timer
+import machine
 import random
 import _thread as threading
 import time
 import binascii
 import gc
+
+
+class WatchDog:
+    """
+    看门狗(WDT)
+    """
+    timer = Timer(-1)
+
+    @classmethod
+    def disable(cls):
+        machine.mem32[0x40058000] = machine.mem32[0x40058000] & ~(1<<30)
+        cls.timer.deinit()
+
+    @classmethod
+    def enable(cls):
+        wdt = machine.WDT(timeout=5000)
+        cls.timer.init(period=3000, mode=Timer.PERIODIC, callback=lambda t: cls.feed(wdt=wdt))
+
+    @classmethod
+    def feed(cls, wdt):
+        wdt.feed()
+        
+        
+class BoardLed:
+    """
+    启动板载LED闪烁功能
+    """
+    timer = Timer(-1)
+
+    @classmethod
+    def disable(cls):
+        cls.timer.deinit()
+
+    @classmethod
+    def enable(cls):
+        cls.timer.init(period=300, mode=Timer.PERIODIC, callback=lambda task: cls.toggle(Pin(25, Pin.OUT)))
+
+    @classmethod
+    def toggle(cls, pin):
+        pin.toggle()
 
 
 class Infrared:
@@ -258,3 +299,5 @@ def random_play():
 
 if __name__ == "__main__":
     Infrared.enable()
+    WatchDog.enable()
+    BoardLed.enable()
